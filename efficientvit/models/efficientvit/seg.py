@@ -512,6 +512,21 @@ def efficientvit_seg_l2(dataset: str, **kwargs) -> EfficientViTSeg:
             act_func="gelu",
             **build_kwargs_from_config(kwargs, SegHead),
         )
+    elif dataset == "bundle2":
+        head = SegHead(
+            fid_list=["stage4", "stage3", "stage2"],
+            in_channel_list=[512, 256, 128],
+            stride_list=[32, 16, 8],
+            head_stride=8,
+            head_width=128,
+            head_depth=3,
+            expand_ratio=4,
+            middle_op="fmbconv",
+            final_expand=8,
+            n_classes=3,
+            act_func="gelu",
+            **build_kwargs_from_config(kwargs, SegHead),
+        )
     else:
         raise NotImplementedError
     model = EfficientViTSeg(backbone, head)

@@ -62,7 +62,7 @@ Depending on whether you want to do **K-Fold cross-validation** or a **simple tr
    ```
 
 > **Need to convert from another format (e.g. YOLO polygons)**?  
-> Use a script that draws polygons onto blank masks as integer IDs. See [convert_yolo2efficient.py](#) or a similar tool.
+> Use a script that draws polygons onto blank masks as integer IDs. See [convert_yolo2efficient.py](convert_yolo2efficient.py) or a similar tool.
 
 ---
 
@@ -74,24 +74,33 @@ Inside `train_seg_configs.py`, you’ll typically find (or add) variables like:
 
 ```python
 # train_seg_configs.py
+import os.path as path
 
-import os
+taskID=r'veddesta-segeltorp'
+out_weights_path = path.join('checkpoints',taskID)
+#TensorBoard
+TensorBoard_dir=path.join('tensorboard-log',taskID)
 
-taskID = 'my_experiment'
-out_weights_path = os.path.join('checkpoints', taskID)
-TensorBoard_dir = os.path.join('tensorboard-log', taskID)
+root_dir = '/path/to/your/dataset'
 
-root_dir = '/path/to/dataset'
 
-max_to_save = 5        # number of model checkpoints to keep
+max_to_save = 5 # number of model checkpoints to keep
 epochs = 50
-LR = 1e-4
-Batch_Size = 4
-Num_workers = 4
-N_splits = 1           # if >1, triggers K-Fold cross-validation
-Model_size = 'b0'      # efficientvit model variant: b0, b1, b2, b3, l1, l2
-IS_IOU_ACC = True      # whether to compute IoU & Accuracy at validation
-Patient_Num = 10       # early stopping patience
+LR = 0.0001
+Batch_Size = 8
+Num_workers = 6
+N_splits = 5    # if >1, triggers K-Fold cross-validation
+Model_size = 'b0'   # efficientvit model variant: b0, b1, b2, b3, l1, l2
+IS_IOU_ACC = False  # whether to compute IoU & Accuracy at validation
+
+#早停策略 val loss没有提升的次数
+Patient_Num=10  # early stopping patience
+#早停策略 val loss 平滑程度
+Std_Smooth=0.05
+
+# Newly added: image size
+image_size = (512, 512)
+
 ```
 
 **Key fields**:

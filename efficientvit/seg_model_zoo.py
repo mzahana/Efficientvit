@@ -46,6 +46,14 @@ REGISTERED_SEG_MODEL: dict[str, dict[str, str]] = {
         "l1": "assets/checkpoints/tire12/l1.pt",
          "l2": "assets/checkpoints/tire12/l2.pt",
     },
+    "bundle2":{
+        "b0": "assets/checkpoints/bundle2/b0.pt",
+        "b1": "assets/checkpoints/bundle2/b1.pt",
+        "b2": "assets/checkpoints/bundle2/b2.pt",
+        "b3": "assets/checkpoints/bundle2/b3.pt",
+        "l1": "assets/checkpoints/bundle2/l1.pt",
+         "l2": "assets/checkpoints/bundle2/l2.pt",
+    },
 }
 
 
