@@ -139,34 +139,20 @@ def yolo_polygon_to_mask(image_path, label_path, out_mask_path, normalized=True,
         if not line:
             continue
         
-        # Format: class_id x0,y0,x1,y1,x2,y2,...
+        # Format: class_id x0 y0 x1 y1 x2 y2 ...
         parts = line.split()
-        class_id = int(parts[0])
-        # The rest is a single string with comma-separated coords or multiple floats
-        # YOLOv8 polygons can vary in format. Let's assume each subsequent item is xN,yN in pairs.
-        # So let's parse them carefully if they are space-delimited or comma-delimited
-        # Example: "0 0.1,0.2,0.15,0.25,0.2,0.3"
-        coords_str = parts[1:]  # might be a single or multiple
-        coords_str = " ".join(coords_str)  # combine if splitted
-        # Now split by comma
-        coords_values = coords_str.split(',')
-        
-        # Another approach: if YOLO stored them as space separated?
-        # It's best to confirm the exact format. We'll assume they're comma-separated.
-        polygon_points = []
-        # coords_values should be [x0, y0, x1, y1, ...]
+        class_id = int(parts[0])  # First value is the class ID
+        coords_values = [float(c) for c in parts[1:]]  # Remaining values are coordinates
+
         if len(coords_values) < 4:
             # Not a valid polygon
             continue
 
-        # Convert to numeric
-        coords_values = [float(c) for c in coords_values]
-
         # Build the polygon list
-        # If normalized, multiply by w, h
+        polygon_points = []
         for i in range(0, len(coords_values), 2):
             x = coords_values[i]
-            y = coords_values[i+1]
+            y = coords_values[i + 1]
             if normalized:
                 x *= w
                 y *= h
@@ -177,6 +163,7 @@ def yolo_polygon_to_mask(image_path, label_path, out_mask_path, normalized=True,
         draw.polygon(polygon_points, outline=fill_val, fill=fill_val)
 
     mask.save(out_mask_path, "PNG")
+
 
 
 def convert_split(

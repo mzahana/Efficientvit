@@ -599,7 +599,79 @@ class ADE20KDataset(Dataset):
             **feed_dict,
         }
 
+class BundelsDataset(Dataset):
+    classes = (
+        "background",
+        "bundle",
+        "single-item",
+        
+    )
+    class_colors = (
+        [120, 120, 120],
+        [180, 120, 120],
+        [6, 230, 230],
+    )
 
+    def __init__(self, data_dir: str, crop_size=512):
+        super().__init__()
+
+        self.crop_size = crop_size
+        # load samples
+        samples = []
+        for dirpath, _, fnames in os.walk(data_dir):
+            for fname in sorted(fnames):
+                suffix = pathlib.Path(fname).suffix
+                if suffix not in [".jpg", ".png", "jpeg"]:
+                    continue
+                image_path = os.path.join(dirpath, fname)
+                mask_path = image_path.replace("/images/", "/annotations/")
+                if not mask_path.endswith(".png"):
+                    mask_path = ".".join([*mask_path.split(".")[:-1], "png"])
+                samples.append((image_path, mask_path))
+        self.samples = samples
+
+        self.transform = transforms.Compose(
+            [
+                ToTensor(mean=[0.1940, 0.2368, 0.2899], std=[0.2137, 0.2134, 0.2235]),
+            ]
+        )
+
+    def __len__(self) -> int:
+        return len(self.samples)
+
+    def __getitem__(self, index: int) -> dict[str, any]:
+        image_path, mask_path = self.samples[index]
+        image = np.array(Image.open(image_path).convert("RGB"))
+        mask = np.array(Image.open(mask_path), dtype=np.int64) - 1
+
+        h, w = image.shape[:2]
+        if h < w:
+            th = self.crop_size
+            tw = math.ceil(w / h * th / 32) * 32
+        else:
+            tw = self.crop_size
+            th = math.ceil(h / w * tw / 32) * 32
+        if th != h or tw != w:
+            image = cv2.resize(
+                image,
+                dsize=(tw, th),
+                interpolation=cv2.INTER_CUBIC,
+            )
+            # mask = cv2.resize(mask, dsize=(tw, th), interpolation=cv2.INTER_NEAREST)
+
+        feed_dict = {
+            "data": image,
+            "label": mask,
+        }
+        feed_dict = self.transform(feed_dict)
+        return {
+            "index": index,
+            "image_path": image_path,
+            "mask_path": mask_path,
+            **feed_dict,
+        }
+        
+        
 def get_canvas(
     image: np.ndarray,
     mask: np.ndarray,
@@ -621,11 +693,11 @@ def get_canvas(
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--path", type=str, default="/dataset/cityscapes/leftImg8bit/val")
-    parser.add_argument("--dataset", type=str, default="cityscapes", choices=["cityscapes", "ade20k"])
+    parser.add_argument("--dataset", type=str, default="bundles", choices=["cityscapes", "ade20k", "bundle2"])
     parser.add_argument("--gpu", type=str, default="0")
     parser.add_argument("--batch_size", help="batch size per gpu", type=int, default=1)
     parser.add_argument("-j", "--workers", help="number of workers", type=int, default=4)
-    parser.add_argument("--crop_size", type=int, default=1024)
+    parser.add_argument("--crop_size", type=int, default=512)
     parser.add_argument("--model", type=str)
     parser.add_argument("--weight_url", type=str, default=None)
     parser.add_argument("--save_path", type=str, default=None)
@@ -644,6 +716,8 @@ def main():
         dataset = CityscapesDataset(args.path, (args.crop_size, args.crop_size * 2))
     elif args.dataset == "ade20k":
         dataset = ADE20KDataset(args.path, crop_size=args.crop_size)
+    elif args.dataset == "bundle2":
+        dataset = BundelsDataset(args.path, crop_size=args.crop_size)
     else:
         raise NotImplementedError
     data_loader = torch.utils.data.DataLoader(
@@ -663,7 +737,7 @@ def main():
         os.makedirs(args.save_path, exist_ok=True)
     interaction = AverageMeter(is_distributed=False)
     union = AverageMeter(is_distributed=False)
-    iou = SegIOU(len(dataset.classes))
+    iou = SegIOU(len(dataset.classes), ignore_index=0)
     with torch.inference_mode():
         with tqdm(total=len(data_loader), desc=f"Eval {args.model} on {args.dataset}") as t:
             for feed_dict in data_loader:
